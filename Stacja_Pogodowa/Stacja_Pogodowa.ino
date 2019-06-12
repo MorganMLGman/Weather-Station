@@ -7,6 +7,8 @@
 #include <Wire.h>
 #include "SSD1306AsciiWire.h"
 
+#define CZAS_LETNI
+
 #define LED_RED 5
 #define LED_ORANGE 6
 #define LED_GREEN 7
@@ -22,7 +24,7 @@ const String APIKEY = "f5fc1bb6b03f4411d20ad5f924b12e4e";
 const String CityID = "765876";
 const String servername = "api.openweathermap.org";
 const unsigned int localPort = 8888;
-const char timeServer[] = "tempus1.gum.gov.pl";
+const char timeServer[] = "0.pl.pool.ntp.org";
 const int NTP_PACKET_SIZE = 48;
 byte packetBuffer[NTP_PACKET_SIZE];
 
@@ -34,9 +36,10 @@ String result;
 unsigned long poprzedni = 0;
 unsigned long poprzedni_pom = 0;
 unsigned long poprzedni_oled = 0;
+unsigned long p_sekundy = 0;
 const int przerwa = 30000;
-const int pomiar = 100;
-const int przerwa_oled = 5000;
+const int pomiar = 3000;
+const int przerwa_oled = 3000;
 double sumatemp = 0;
 double sumahumi = 0;
 double sumapress = 0;
@@ -46,12 +49,15 @@ double pressavr = 0;
 int ile_pom = 0;
 int godziny;
 int minuty;
+int sekundy;
 bool state_r = 1;
 bool state_g = 0;
 enum oled_state{DOM, MIASTO, CZAS};
 oled_state oled_s = DOM;
 
 void wyswietl_oled(oled_state stan);
+
+void(*resetFunc) (void) = 0;
 
 void setup() {
 	pinMode(LED_GREEN, OUTPUT);
@@ -64,15 +70,31 @@ void setup() {
 	Wire.setClock(400000L);
 	//Serial.begin(9600);
 	bme.begin(0x76);
+	bme.setSampling(Adafruit_BME280::MODE_NORMAL,
+		Adafruit_BME280::SAMPLING_X16, // temperature
+		Adafruit_BME280::SAMPLING_X16, // pressure
+		Adafruit_BME280::SAMPLING_X16, // humidity
+		Adafruit_BME280::FILTER_X16,
+		Adafruit_BME280::STANDBY_MS_0_5);
 	oled.begin(&Adafruit128x64, I2C_ADDRESS);
 	oled.setFont(fixed_bold10x15);
 	oled.clear();
 	if(Ethernet.begin(mac) == 0) {
-		while (Ethernet.begin(mac) == 0) {
-			oled.clear();
-			oled.println("NO DHCP");
-			delay(1000);
-		}
+		oled.println("NO DHCP\n5");
+		delay(1000);
+		oled.clear();
+		oled.println("NO DHCP\n4");
+		delay(1000);
+		oled.clear();
+		oled.println("NO DHCP\n3");
+		delay(1000);
+		oled.clear();
+		oled.println("NO DHCP\n2");
+		delay(1000);
+		oled.clear();
+		oled.println("NO DHCP\n1");
+		delay(1000);
+		resetFunc();
 	}
 	else {
 		oled.clear();
@@ -98,7 +120,7 @@ void setup() {
 void loop() {
 
 	if (millis() - poprzedni_pom >= pomiar) {
-		sumatemp = sumatemp + bme.readTemperature();
+		sumatemp = sumatemp + bme.readTemperature() - 2.5;
 		sumahumi = sumahumi + bme.readHumidity();
 		sumapress = sumapress + bme.readPressure();
 		ile_pom++;
@@ -139,10 +161,29 @@ void loop() {
 			const unsigned long seventyYears = 2208988800UL;
 			unsigned long epoch = secsSince1900 - seventyYears;
 			epoch = epoch + 3600;
+			#ifdef CZAS_LETNI
+				epoch = epoch + 3600;
+			#endif
 			godziny = (epoch % 86400L) / 3600;
 			minuty = (epoch % 3600) / 60;
+			sekundy = epoch % 60;
 		}
 		poprzedni = millis();
+	}
+	if (millis() - p_sekundy >= 1000) {
+		sekundy++;
+		if (sekundy > 59) {
+			minuty++;
+			sekundy = 0;
+			if (minuty > 59) {
+				godziny++;
+				minuty = 0;
+				if (godziny > 23) {
+					godziny = 0;
+				}
+			}
+		}
+		p_sekundy = millis();
 	}
 }
 
@@ -212,8 +253,14 @@ void wyswietl_oled(oled_state stan) {
 		oled.println();
 		oled.print(" ");
 		oled.set2X();
-		oled.print(godziny);
-		oled.print(":");
+		if (godziny < 10) {
+			oled.print("0");
+			oled.print(godziny);
+		}
+		else {
+			oled.print(godziny);
+		}
+		oled.print("|");
 		if (minuty < 10) {
 			oled.print("0");			
 		}
