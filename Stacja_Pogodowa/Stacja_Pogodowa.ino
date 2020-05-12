@@ -20,8 +20,8 @@ IPAddress ip(192, 168, 1, 20);
 EthernetClient client;
 EthernetUDP Udp;
 
-const String APIKEY = "f5fc1bb6b03f4411d20ad5f924b12e4e";
-const String CityID = "765876";
+const String APIKEY = "TWÃ“J API KEY";
+const String CityID = "ID TWOJEGO MIASTA";
 const String servername = "api.openweathermap.org";
 const unsigned int localPort = 8888;
 const char timeServer[] = "0.pl.pool.ntp.org";
@@ -101,12 +101,12 @@ void setup() {
 		oled.println(Ethernet.localIP());
 		delay(3000);
 	}
-	// Sprawdzenie poprawnoœci po³¹czeñ
+	// Sprawdzenie poprawnoÅ“ci poÂ³Â¹czeÃ±
 	if (Ethernet.hardwareStatus() == EthernetNoHardware) {
 		oled.clear();
 		oled.println("NO SHIELD");
 		while (true) {
-			delay(1); //Nic nie rób
+			delay(1); //Nic nie rÃ³b
 		}
 	}
 	Udp.begin(localPort);
